@@ -113,9 +113,9 @@ export async function parseSlip(file: File): Promise<ParseResult> {
     if (ph) { data.phone = ph[0].trim(); mark("phone"); }
   }
 
-  // ---- gift message + gift-box properties + items ----
+  // ---- gift-box properties (Box size / Item N / scent…) + gift message ----
   const details: string[] = [];
-  let productTitle = "";
+  let firstPropIdx = -1;
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i];
     if (/gift message/i.test(l)) {
@@ -131,32 +131,63 @@ export async function parseSlip(file: File): Promise<ParseResult> {
     if (prop) {
       const key = prop[1].trim();
       const val = prop[2].trim();
-      if (/^_/.test(key) || /^(email|phone|order|contact|subtotal|total|taxes?|shipping|paid|billing|customer|tracking)$/i.test(key)) continue;
-      if (/^(box size|item\s*\d+|scent|size|pack)/i.test(key)) { details.push(`${key}: ${val}`); mark("items"); }
-      continue;
-    }
-    if (!productTitle && PRODUCTY.test(l) && l.length < 60 && !/₹|rs\.?|inr|\$/i.test(l)) {
-      productTitle = l.replace(/\s*[x×]\s*\d+.*$/i, "").replace(/^\d+\s*[x×]\s*/i, "").trim();
+      if (/^_/.test(key)) continue;
+      if (/^(box size|item\s*\d+|scent|size|pack|colou?r|fragrance|variant|option|type|flavou?r)/i.test(key)) {
+        if (firstPropIdx === -1) firstPropIdx = i;
+        details.push(`${key}: ${val}`);
+      }
     }
   }
 
-  // Quantity x title lines (regular products, non-gift-box)
+  const looksLikeTitle = (s: string) =>
+    !!s &&
+    s.trim().length >= 2 &&
+    s.length < 80 &&
+    !isProperty(s) &&
+    !HEADING.test(s) &&
+    /[A-Za-z]/.test(s) &&
+    !/₹|\brs\.?\b|\binr\b|\$|@|https?:|www\.|\bindia\b|\b\d{5,}\b/i.test(s);
+  const cleanTitle = (s: string) =>
+    s
+      .replace(/\s*[x×]\s*\d{1,3}\s*$/i, "")
+      .replace(/^\s*\d{1,3}\s*[x×]\s*/i, "")
+      .replace(/^\s*\d{1,3}\s+(?=[A-Za-z])/, "")
+      .replace(/\s+(SKU\b|₹|Rs\.?\s*\d).*/i, "")
+      .trim();
+
   const items: SlipItem[] = [];
-  for (const l of lines) {
-    let m = l.match(/^(\d{1,3})\s*[x×]\s*(.{2,}?)(?:\s*[-–]\s*.*)?$/);
-    if (!m) m = l.match(/^(.{2,}?)\s*[x×]\s*(\d{1,3})\b/) ? [l, RegExp.$2, RegExp.$1] as unknown as RegExpMatchArray : null;
-    if (m && PRODUCTY.test(m[2]) && !/₹|rs\.?|inr|\$/i.test(m[2])) {
-      items.push({ qty: String(parseInt(m[1], 10) || 1), title: m[2].trim(), details: [] });
+
+  // 1) Gift-box style — the product name sits just above its first property.
+  if (firstPropIdx > 0) {
+    for (let k = firstPropIdx - 1; k >= 0 && firstPropIdx - k <= 4; k--) {
+      if (looksLikeTitle(lines[k])) {
+        items.push({ qty: "1", title: cleanTitle(lines[k]), details });
+        break;
+      }
+    }
+    if (items.length === 0) items.push({ qty: "1", title: "Gift Box", details });
+  }
+
+  // 2) Regular products — quantity rows in several common layouts.
+  if (items.length === 0) {
+    for (const l of lines) {
+      let qty = "", title = "", m: RegExpMatchArray | null;
+      if ((m = l.match(/^(\d{1,3})\s*[x×]\s*(.+)$/))) { qty = m[1]; title = m[2]; }            // "2 × Body Butter"
+      else if ((m = l.match(/^(.+?)\s*[x×]\s*(\d{1,3})\b/))) { qty = m[2]; title = m[1]; }       // "Body Butter × 2"
+      else if ((m = l.match(/^(\d{1,3})\s+(\D.+)$/)) && PRODUCTY.test(m[2])) { qty = m[1]; title = m[2]; } // "2 Body Butter" (table columns)
+      const t = title ? cleanTitle(title) : "";
+      if (t && looksLikeTitle(t)) items.push({ qty: String(parseInt(qty, 10) || 1), title: t, details: [] });
     }
   }
 
-  if (details.length || productTitle) {
-    // gift-box style: one line item with its contents as details
-    data.items = [{ qty: "1", title: productTitle || "Gift Box", details }];
-  } else if (items.length) {
-    data.items = items;
+  // 3) Last resort — any recognisable product line.
+  if (items.length === 0) {
+    const pl = lines.find((l) => PRODUCTY.test(l) && looksLikeTitle(l));
+    if (pl) items.push({ qty: "1", title: cleanTitle(pl), details: [] });
   }
-  if (data.items.length) mark("items");
+
+  data.items = items;
+  if (items.length) mark("items");
 
   return { data, rawText: raw, detected };
 }

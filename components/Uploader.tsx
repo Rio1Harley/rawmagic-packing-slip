@@ -53,7 +53,7 @@ export default function Uploader({
         </span>
         <div>
           <p className="font-heading text-xl text-green-dark">Drop your Shopify packing slip</p>
-          <p className="mt-1 text-sm text-ink/60">or tap to choose a PDF — it&rsquo;s read right here, never uploaded</p>
+          <p className="mt-1 text-sm text-ink/60">or tap to choose a PDF</p>
         </div>
         {busy && <p className="text-sm font-semibold text-terracotta">Reading PDF…</p>}
       </div>

@@ -102,16 +102,6 @@ export default function FieldForm({
       </div>
 
       <label className="block">
-        <Label detected={has("giftMessage")}>Gift message</Label>
-        <textarea
-          className={`${inputCls} min-h-[64px] resize-y`}
-          value={data.giftMessage}
-          onChange={(e) => set({ giftMessage: e.target.value })}
-          placeholder="To my brother — take a break, you have earned it."
-        />
-      </label>
-
-      <label className="block">
         <Label>Footer note</Label>
         <input className={inputCls} value={data.footerNote} onChange={(e) => set({ footerNote: e.target.value })} />
       </label>

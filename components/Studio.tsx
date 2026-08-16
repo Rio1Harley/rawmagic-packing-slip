@@ -78,7 +78,7 @@ export default function Studio() {
             <div className="mb-6 text-center">
               <h1 className="font-heading text-3xl text-green-dark sm:text-4xl">Brand your packing slip</h1>
               <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-ink/65">
-                Upload the packing slip PDF from Shopify. We&rsquo;ll pull out the order details, let you tidy anything, and export a Raw Magic&ndash;styled label in the courier size you need — <strong>all in your browser, nothing stored.</strong>
+                Upload the packing slip PDF from Shopify. We&rsquo;ll pull out the order details, let you tidy anything, and export a Raw Magic&ndash;styled label in the courier size you need.
               </p>
             </div>
             <Uploader onFile={handleFile} onBlank={startBlank} busy={busy} error={error} />
@@ -121,7 +121,7 @@ export default function Studio() {
       </div>
 
       <footer className="border-t border-sand py-6 text-center text-xs text-ink/45">
-        Built for Raw Magic by Nextline Creative · runs entirely in your browser · no uploads, no database
+        Built for Raw Magic by Nextline Creative
       </footer>
     </main>
   );

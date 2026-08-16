@@ -15,16 +15,6 @@ const SAND = "#E7E3D7";
 const MUTE = "#6B6B60";
 const SERIF = '"Old Standard TT", Georgia, serif';
 
-function LeafMark({ size }: { size: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <circle cx="16" cy="16" r="14.6" stroke={GREEN_DARK} strokeWidth="1.3" />
-      <path d="M16 6c-4.6 5-4.6 13 0 20 4.6-7 4.6-15 0-20z" fill={GREEN} />
-      <path d="M16 9v14" stroke={CREAM} strokeWidth="1" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function splitItemDetails(details: string[]) {
   let boxSize = "";
   const includes: string[] = [];
@@ -173,7 +163,12 @@ export default function SlipPreview({ data, size }: { data: SlipData; size: Labe
                 {/* Header */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.6em" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.55em" }}>
-                    <LeafMark size={base * 2.1} />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/rawmagic-logo.png"
+                      alt="Raw Magic"
+                      style={{ width: base * 2.6, height: base * 2.6, display: "block", flex: "0 0 auto", objectFit: "contain" }}
+                    />
                     <div>
                       <div style={{ fontFamily: SERIF, fontSize: "1.5em", lineHeight: 1, letterSpacing: "0.05em", color: GREEN_DARK }}>RAW MAGIC</div>
                       <div style={{ fontSize: "0.56em", letterSpacing: "0.22em", color: TERRA, marginTop: "0.35em", textTransform: "uppercase" }}>Handcrafted bath &amp; body</div>
@@ -206,14 +201,6 @@ export default function SlipPreview({ data, size }: { data: SlipData; size: Labe
                   )}
                 </div>
 
-                {/* Gift message */}
-                {data.giftMessage && (
-                  <div style={{ marginTop: "0.55em", padding: "0.65em 0.85em", backgroundColor: "#ffffff", border: `1.4px dashed ${GREEN}`, borderRadius: "0.5em" }}>
-                    <div style={{ fontSize: "0.56em", letterSpacing: "0.2em", color: TERRA, textTransform: "uppercase", fontWeight: 800 }}>Gift Message</div>
-                    <div style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.92em", color: INK, marginTop: "0.2em", lineHeight: 1.4 }}>&ldquo;{data.giftMessage}&rdquo;</div>
-                  </div>
-                )}
-
                 {/* Footer */}
                 <div style={{ marginTop: "auto", paddingTop: "0.65em", borderTop: `1px solid ${SAND}`, textAlign: "center" }}>
                   <div style={{ fontSize: "0.64em", color: MUTE, lineHeight: 1.4 }}>{data.footerNote}</div>
@@ -233,7 +220,7 @@ export default function SlipPreview({ data, size }: { data: SlipData; size: Labe
           {busy ? "Preparing PDF…" : `Download PDF · ${size.label}`}
         </button>
         {err && <p className="text-center text-sm text-terracotta">{err}</p>}
-        <p className="text-center text-xs text-ink/50">Rendered at {size.wmm}×{size.hmm}&nbsp;mm. Nothing is uploaded — the PDF is built in your browser.</p>
+        <p className="text-center text-xs text-ink/50">Rendered at {size.wmm}×{size.hmm}&nbsp;mm.</p>
       </div>
     </div>
   );
