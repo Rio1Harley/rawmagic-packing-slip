@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { SlipData, SlipItem } from "@/lib/types";
+import { SlipData } from "@/lib/types";
 import { LabelSize } from "@/lib/sizes";
 import { exportSlipToPdf } from "@/lib/exportPdf";
 
@@ -15,10 +15,17 @@ const SAND = "#E7E3D7";
 const MUTE = "#6B6B60";
 const SERIF = '"Old Standard TT", Georgia, serif';
 
+const toNum = (s: string) => {
+  const n = parseFloat(String(s || "").replace(/[^0-9.]/g, ""));
+  return isNaN(n) ? 0 : n;
+};
+const inr = (n: number) => "₹" + n.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+const fmtPrice = (s: string) => (toNum(s) ? inr(toNum(s)) : "—");
+const lineTotal = (qty: string, price: string) => (toNum(qty) * toNum(price) ? inr(toNum(qty) * toNum(price)) : "—");
+
 function splitItemDetails(details: string[]) {
   let boxSize = "";
   const includes: string[] = [];
-  const others: string[] = [];
   for (const d of details) {
     const m = d.match(/^([^:]+):\s*(.+)$/);
     if (m) {
@@ -26,59 +33,9 @@ function splitItemDetails(details: string[]) {
       const v = m[2].trim();
       if (k.startsWith("box size") || k === "size") boxSize = v;
       else if (/^item\s*\d+/.test(k)) includes.push(v);
-      else others.push(`${m[1].trim()}: ${v}`);
-    } else {
-      others.push(d);
     }
   }
-  return { boxSize, includes, others };
-}
-
-function ItemRow({ item, base, first }: { item: SlipItem; base: number; first: boolean }) {
-  const { boxSize, includes, others } = splitItemDetails(item.details);
-  return (
-    <div style={{ borderTop: first ? "none" : `1px solid ${SAND}`, padding: "0.45em 0" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "0.6em" }}>
-        <div style={{ fontFamily: SERIF, fontSize: "1.02em", color: TERRA, lineHeight: 1.2 }}>{item.title || "Item"}</div>
-        <div style={{ fontSize: "0.82em", color: INK, whiteSpace: "nowrap", fontWeight: 700 }}>× {item.qty || "1"}</div>
-      </div>
-      {boxSize && (
-        <span
-          style={{
-            display: "inline-block",
-            marginTop: "0.3em",
-            fontSize: "0.6em",
-            padding: "0.2em 0.7em",
-            backgroundColor: GREEN_DARK,
-            color: "#ffffff",
-            borderRadius: "999px",
-            letterSpacing: "0.06em",
-            textTransform: "uppercase",
-          }}
-        >
-          {boxSize} box
-        </span>
-      )}
-      {includes.length > 0 && (
-        <div style={{ marginTop: "0.35em" }}>
-          <div style={{ fontSize: "0.58em", color: MUTE, letterSpacing: "0.14em", textTransform: "uppercase" }}>Includes</div>
-          <ul style={{ margin: "0.2em 0 0", padding: 0, listStyle: "none", display: "flex", flexWrap: "wrap", gap: "0.2em 0.7em" }}>
-            {includes.map((x, j) => (
-              <li key={j} style={{ fontSize: "0.78em", color: "#3a3a34", display: "flex", alignItems: "center", gap: "0.35em" }}>
-                <span style={{ width: "0.32em", height: "0.32em", borderRadius: "999px", backgroundColor: GREEN, display: "inline-block", flex: "0 0 auto" }} />
-                {x}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {others.map((o, j) => (
-        <div key={j} style={{ fontSize: "0.74em", color: "#3a3a34", marginTop: "0.15em" }}>
-          {o}
-        </div>
-      ))}
-    </div>
-  );
+  return { boxSize, includes };
 }
 
 export default function SlipPreview({ data, size }: { data: SlipData; size: LabelSize }) {
@@ -104,6 +61,7 @@ export default function SlipPreview({ data, size }: { data: SlipData; size: Labe
   }, [Wpx]);
 
   const addressLines = useMemo(() => data.shipToAddress.split("\n").filter((l) => l.trim()), [data.shipToAddress]);
+  const grand = useMemo(() => data.items.reduce((s, it) => s + toNum(it.qty) * toNum(it.price), 0), [data.items]);
 
   async function handleExport() {
     if (!slipRef.current) return;
@@ -135,7 +93,7 @@ export default function SlipPreview({ data, size }: { data: SlipData; size: Labe
           }}
         >
           <div style={{ position: "absolute", top: 0, left: 0, transform: `scale(${scale})`, transformOrigin: "top left" }}>
-            {/* ── The exact-size, exported artboard ── */}
+            {/* ── Exact-size, exported artboard ── */}
             <div
               ref={slipRef}
               style={{
@@ -147,63 +105,84 @@ export default function SlipPreview({ data, size }: { data: SlipData; size: Labe
                 fontSize: base,
                 boxSizing: "border-box",
                 overflow: "hidden",
-                position: "relative",
               }}
             >
               <div style={{ height: "0.45em", backgroundColor: GREEN_DARK }} />
-              <div
-                style={{
-                  padding: "1.15em 1.3em 1em",
-                  height: `calc(100% - 0.45em)`,
-                  boxSizing: "border-box",
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
-                {/* Header */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.6em" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.55em" }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src="/rawmagic-logo.png"
-                      alt="Raw Magic"
-                      style={{ width: base * 2.6, height: base * 2.6, display: "block", flex: "0 0 auto", objectFit: "contain" }}
-                    />
-                    <div>
-                      <div style={{ fontFamily: SERIF, fontSize: "1.5em", lineHeight: 1, letterSpacing: "0.05em", color: GREEN_DARK }}>RAW MAGIC</div>
-                      <div style={{ fontSize: "0.56em", letterSpacing: "0.22em", color: TERRA, marginTop: "0.35em", textTransform: "uppercase" }}>Handcrafted bath &amp; body</div>
-                    </div>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: "0.58em", letterSpacing: "0.2em", color: MUTE, textTransform: "uppercase" }}>Packing Slip</div>
-                    {data.orderNumber && <div style={{ fontFamily: SERIF, fontSize: "1.1em", color: INK }}>#{data.orderNumber}</div>}
-                    {data.orderDate && <div style={{ fontSize: "0.62em", color: MUTE }}>{data.orderDate}</div>}
-                  </div>
+              <div style={{ padding: "1.1em 1.3em 1em", height: `calc(100% - 0.45em)`, boxSizing: "border-box", display: "flex", flexDirection: "column" }}>
+                {/* Header — centered logo + slogan */}
+                <div style={{ textAlign: "center", paddingTop: "0.15em" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/rawmagic-logo.png" alt="Raw Magic" style={{ height: base * 3.9, width: "auto", maxWidth: "72%", display: "inline-block", objectFit: "contain" }} />
+                  <div style={{ fontSize: "0.6em", letterSpacing: "0.3em", color: TERRA, textTransform: "uppercase", marginTop: "0.45em", fontWeight: 700 }}>Handcrafted Bath &amp; Body</div>
+                </div>
+
+                {/* Meta row */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: "0.85em", paddingBottom: "0.5em", borderBottom: `1px solid ${SAND}` }}>
+                  <span style={{ fontSize: "0.6em", letterSpacing: "0.2em", color: MUTE, textTransform: "uppercase", fontWeight: 800 }}>Packing Slip</span>
+                  <span style={{ textAlign: "right", fontSize: "0.72em", color: INK }}>
+                    {data.orderNumber && <span style={{ fontFamily: SERIF }}>#{data.orderNumber}</span>}
+                    {data.orderDate && <span style={{ color: MUTE, marginLeft: "0.5em" }}>{data.orderDate}</span>}
+                  </span>
                 </div>
 
                 {/* Ship to */}
-                <div style={{ marginTop: "0.95em", padding: "0.75em 0.9em", backgroundColor: CREAM, border: `1px solid ${SAND}`, borderRadius: "0.5em" }}>
-                  <div style={{ fontSize: "0.58em", letterSpacing: "0.2em", color: GREEN, textTransform: "uppercase", fontWeight: 800 }}>Ship To</div>
-                  <div style={{ fontFamily: SERIF, fontSize: "1.16em", color: INK, marginTop: "0.1em" }}>{data.shipToName || "—"}</div>
+                <div style={{ marginTop: "0.7em", padding: "0.7em 0.85em", backgroundColor: CREAM, border: `1px solid ${SAND}`, borderRadius: "0.5em" }}>
+                  <div style={{ fontSize: "0.56em", letterSpacing: "0.2em", color: GREEN, textTransform: "uppercase", fontWeight: 800 }}>Ship To</div>
+                  <div style={{ fontFamily: SERIF, fontSize: "1.12em", color: INK, marginTop: "0.1em" }}>{data.shipToName || "—"}</div>
                   {addressLines.map((l, i) => (
-                    <div key={i} style={{ fontSize: "0.8em", lineHeight: 1.4, color: "#3a3a34" }}>{l}</div>
+                    <div key={i} style={{ fontSize: "0.78em", lineHeight: 1.4, color: "#3a3a34" }}>{l}</div>
                   ))}
-                  {data.phone && <div style={{ fontSize: "0.8em", color: INK, marginTop: "0.2em", fontWeight: 600 }}>Phone: {data.phone}</div>}
+                  {data.phone && <div style={{ fontSize: "0.78em", color: INK, marginTop: "0.2em", fontWeight: 600 }}>Phone: {data.phone}</div>}
                 </div>
 
-                {/* Items */}
-                <div style={{ marginTop: "0.85em", flex: "1 1 auto", minHeight: 0, overflow: "hidden" }}>
-                  <div style={{ fontSize: "0.58em", letterSpacing: "0.2em", color: GREEN, textTransform: "uppercase", fontWeight: 800, marginBottom: "0.15em" }}>In this parcel</div>
+                {/* Items table */}
+                <div style={{ marginTop: "0.8em", flex: "1 1 auto", minHeight: 0, overflow: "hidden" }}>
+                  <div style={{ display: "flex", fontSize: "0.54em", letterSpacing: "0.1em", color: MUTE, textTransform: "uppercase", fontWeight: 800, paddingBottom: "0.35em", borderBottom: `1.5px solid ${GREEN_DARK}` }}>
+                    <div style={{ flex: "1 1 auto" }}>Item</div>
+                    <div style={{ width: "2em", textAlign: "center" }}>Qty</div>
+                    <div style={{ width: "3.6em", textAlign: "right" }}>Price</div>
+                    <div style={{ width: "3.8em", textAlign: "right" }}>Total</div>
+                  </div>
+
                   {data.items.length === 0 ? (
-                    <div style={{ fontSize: "0.8em", color: MUTE, paddingTop: "0.3em" }}>—</div>
+                    <div style={{ fontSize: "0.8em", color: MUTE, padding: "0.5em 0" }}>—</div>
                   ) : (
-                    data.items.map((it, i) => <ItemRow key={i} item={it} base={base} first={i === 0} />)
+                    data.items.map((it, i) => {
+                      const { boxSize, includes } = splitItemDetails(it.details);
+                      return (
+                        <div key={i} style={{ display: "flex", alignItems: "flex-start", padding: "0.42em 0", borderBottom: `1px solid ${SAND}` }}>
+                          <div style={{ flex: "1 1 auto", paddingRight: "0.4em", minWidth: 0 }}>
+                            <div style={{ fontFamily: SERIF, fontSize: "0.96em", color: TERRA, lineHeight: 1.15 }}>{it.title || "Item"}</div>
+                            {it.variant && <div style={{ fontSize: "0.72em", color: "#5a5a52", marginTop: "0.08em" }}>{it.variant}</div>}
+                            {boxSize && (
+                              <span style={{ display: "inline-block", marginTop: "0.22em", fontSize: "0.52em", padding: "0.16em 0.6em", backgroundColor: GREEN_DARK, color: "#fff", borderRadius: "999px", letterSpacing: "0.06em", textTransform: "uppercase" }}>{boxSize} box</span>
+                            )}
+                            {includes.length > 0 && (
+                              <div style={{ fontSize: "0.68em", color: "#5a5a52", marginTop: "0.18em", lineHeight: 1.35 }}>
+                                <span style={{ color: MUTE }}>Includes: </span>
+                                {includes.join(" · ")}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ width: "2em", textAlign: "center", fontSize: "0.82em", fontWeight: 700 }}>{it.qty || "1"}</div>
+                          <div style={{ width: "3.6em", textAlign: "right", fontSize: "0.78em" }}>{fmtPrice(it.price)}</div>
+                          <div style={{ width: "3.8em", textAlign: "right", fontSize: "0.82em", fontWeight: 700 }}>{lineTotal(it.qty, it.price)}</div>
+                        </div>
+                      );
+                    })
+                  )}
+
+                  {grand > 0 && (
+                    <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "baseline", gap: "0.7em", marginTop: "0.55em" }}>
+                      <span style={{ fontSize: "0.6em", letterSpacing: "0.14em", color: MUTE, textTransform: "uppercase", fontWeight: 800 }}>Total</span>
+                      <span style={{ fontFamily: SERIF, fontSize: "1.18em", color: GREEN_DARK }}>{inr(grand)}</span>
+                    </div>
                   )}
                 </div>
 
                 {/* Footer */}
-                <div style={{ marginTop: "auto", paddingTop: "0.65em", borderTop: `1px solid ${SAND}`, textAlign: "center" }}>
-                  <div style={{ fontSize: "0.64em", color: MUTE, lineHeight: 1.4 }}>{data.footerNote}</div>
+                <div style={{ marginTop: "auto", paddingTop: "0.6em", borderTop: `1px solid ${SAND}`, textAlign: "center" }}>
+                  <div style={{ fontSize: "0.62em", color: MUTE, lineHeight: 1.4 }}>{data.footerNote}</div>
                 </div>
               </div>
             </div>

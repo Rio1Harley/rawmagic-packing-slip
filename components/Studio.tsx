@@ -5,6 +5,7 @@ import Uploader from "@/components/Uploader";
 import SizePicker from "@/components/SizePicker";
 import FieldForm from "@/components/FieldForm";
 import SlipPreview from "@/components/SlipPreview";
+import HelpWidget from "@/components/HelpWidget";
 import { SlipData, emptySlip } from "@/lib/types";
 import { LabelSize, SIZES } from "@/lib/sizes";
 import { parseSlip } from "@/lib/parseSlip";
@@ -123,6 +124,8 @@ export default function Studio() {
       <footer className="border-t border-sand py-6 text-center text-xs text-ink/45">
         Built for Raw Magic by Nextline Creative
       </footer>
+
+      <HelpWidget />
     </main>
   );
 }

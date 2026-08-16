@@ -1,8 +1,16 @@
 export interface SlipItem {
-  qty: string;
   title: string;
-  /** Sub-lines: variant, SKU, and gift-box properties like "Box size: Medium", "Item 1: Bath Salt". */
+  /** Variant / scent, printed under the name. */
+  variant: string;
+  qty: string;
+  /** Unit price, numeric string e.g. "200.00" (blank = not shown). */
+  price: string;
+  /** Gift-box properties like "Box size: Medium", "Item 1: Bath Salt". */
   details: string[];
+}
+
+export function emptyItem(): SlipItem {
+  return { title: "", variant: "", qty: "1", price: "", details: [] };
 }
 
 export interface SlipData {

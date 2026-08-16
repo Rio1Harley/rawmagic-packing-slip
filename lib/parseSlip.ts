@@ -161,11 +161,11 @@ export async function parseSlip(file: File): Promise<ParseResult> {
   if (firstPropIdx > 0) {
     for (let k = firstPropIdx - 1; k >= 0 && firstPropIdx - k <= 4; k--) {
       if (looksLikeTitle(lines[k])) {
-        items.push({ qty: "1", title: cleanTitle(lines[k]), details });
+        items.push({ title: cleanTitle(lines[k]), variant: "", qty: "1", price: "", details });
         break;
       }
     }
-    if (items.length === 0) items.push({ qty: "1", title: "Gift Box", details });
+    if (items.length === 0) items.push({ title: "Gift Box", variant: "", qty: "1", price: "", details });
   }
 
   // 2) Regular products — quantity rows in several common layouts.
@@ -176,14 +176,14 @@ export async function parseSlip(file: File): Promise<ParseResult> {
       else if ((m = l.match(/^(.+?)\s*[x×]\s*(\d{1,3})\b/))) { qty = m[2]; title = m[1]; }       // "Body Butter × 2"
       else if ((m = l.match(/^(\d{1,3})\s+(\D.+)$/)) && PRODUCTY.test(m[2])) { qty = m[1]; title = m[2]; } // "2 Body Butter" (table columns)
       const t = title ? cleanTitle(title) : "";
-      if (t && looksLikeTitle(t)) items.push({ qty: String(parseInt(qty, 10) || 1), title: t, details: [] });
+      if (t && looksLikeTitle(t)) items.push({ title: t, variant: "", qty: String(parseInt(qty, 10) || 1), price: "", details: [] });
     }
   }
 
   // 3) Last resort — any recognisable product line.
   if (items.length === 0) {
     const pl = lines.find((l) => PRODUCTY.test(l) && looksLikeTitle(l));
-    if (pl) items.push({ qty: "1", title: cleanTitle(pl), details: [] });
+    if (pl) items.push({ title: cleanTitle(pl), variant: "", qty: "1", price: "", details: [] });
   }
 
   data.items = items;
