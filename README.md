@@ -4,10 +4,8 @@ A tiny, single-purpose web app that turns a **Shopify packing slip PDF** into a
 **Raw Magic–branded courier label** at whatever size you print on — 4×6″ thermal,
 A4, A5, A6, and more.
 
-Everything runs **in the browser**. The PDF is read with `pdf.js` on the client,
-the details are extracted and shown in an editable form, and the branded label is
-generated with `jsPDF`. **Nothing is uploaded, and nothing is stored** — the file
-never leaves the device, and closing the tab clears it.
+The PDF is read with `pdf.js` on the client, the details are extracted into an
+editable form, and the branded label is generated with `jsPDF`.
 
 ## What it does
 
@@ -23,13 +21,6 @@ never leaves the device, and closing the tab clears it.
 `4" × 6"` is the universal thermal shipping-label size accepted across Amazon,
 Meesho, Myntra, Flipkart, Shiprocket, Delhivery, Blue Dart, DTDC, etc. Also
 included: A6, A5, A4 (Shopify's own slip), 4×4″, 3×4″, and a custom size (in / mm).
-
-## Privacy
-
-- No backend, no database, no analytics.
-- The uploaded PDF is parsed in memory with `pdf.js`; only the extracted text
-  fields are kept in React state. The `File` object is never persisted or sent
-  anywhere, and everything is gone on refresh.
 
 ## Tech
 
@@ -52,7 +43,7 @@ npm run dev
 
 1. Push this repo to GitHub (already done).
 2. In Vercel: **New Project → import this repo**.
-3. Framework preset **Next.js** is auto-detected — no env vars, no database.
+3. Framework preset **Next.js** is auto-detected — no env vars needed.
 4. Deploy. That's it.
 
 ---

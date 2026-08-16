@@ -3,8 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Raw Magic · Packing Slip Studio",
-  description:
-    "Turn a Shopify packing slip into a brand-styled courier label at any size — entirely in your browser. Nothing is uploaded or stored.",
+  description: "Turn a Shopify packing slip into a brand-styled courier label at any size.",
 };
 
 export const viewport: Viewport = {
