@@ -18,21 +18,24 @@ export default function Studio() {
   const [detected, setDetected] = useState<string[]>([]);
   const [size, setSize] = useState<LabelSize>(SIZES[0]);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState("");
   const [error, setError] = useState("");
 
   async function handleFile(file: File) {
     setBusy(true);
     setError("");
+    setProgress("Reading PDF…");
     try {
-      const res = await parseSlip(file);
+      const res = await parseSlip(file, (p, label) => setProgress(p ? `${label} ${p}%` : label));
       setData(res.data);
       setDetected(res.detected);
       setStage("edit");
     } catch (e) {
-      setError("Couldn't read that PDF. Try Shopify's Print → packing slip, or fill in the details manually.");
+      console.error("parseSlip failed:", e);
+      setError("Couldn't read that PDF. Try Shopify's Print → Packing slip, or fill in the details manually.");
     } finally {
       setBusy(false);
-      // The File is not retained anywhere — only the extracted fields live in memory.
+      setProgress("");
     }
   }
 
@@ -82,7 +85,7 @@ export default function Studio() {
                 Upload the packing slip PDF from Shopify. We&rsquo;ll pull out the order details, let you tidy anything, and export a Raw Magic&ndash;styled label in the courier size you need.
               </p>
             </div>
-            <Uploader onFile={handleFile} onBlank={startBlank} busy={busy} error={error} />
+            <Uploader onFile={handleFile} onBlank={startBlank} busy={busy} progressLabel={progress} error={error} />
           </div>
         ) : (
           <div className="lg:grid lg:grid-cols-[1fr,minmax(300px,380px)] lg:gap-8">

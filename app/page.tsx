@@ -1,9 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import PinGate from "@/components/PinGate";
 
-// The whole tool is client-only (pdf.js / jsPDF / html2canvas need the browser),
-// so we skip SSR entirely and load it on the client.
+// The whole tool is client-only (pdf.js / OCR / jsPDF / html2canvas need the
+// browser), so we skip SSR entirely and load it on the client.
 const Studio = dynamic(() => import("@/components/Studio"), {
   ssr: false,
   loading: () => (
@@ -14,5 +15,9 @@ const Studio = dynamic(() => import("@/components/Studio"), {
 });
 
 export default function Page() {
-  return <Studio />;
+  return (
+    <PinGate>
+      <Studio />
+    </PinGate>
+  );
 }

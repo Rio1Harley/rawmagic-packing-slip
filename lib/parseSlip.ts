@@ -8,17 +8,22 @@ if (typeof window !== "undefined") {
   pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 }
 
+export type ProgressFn = (percent: number, label: string) => void;
+
 export interface ParseResult {
   data: SlipData;
   rawText: string;
   detected: string[];
+  usedOcr: boolean;
 }
 
 const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
 const PHONE_RE = /(\+?\d[\d\s\-]{7,}\d)/;
 const PRODUCTY = /(gift box|hamper|perfume|soap|scrub|body butter|butter|bath salt|salt|body wash|wash|aloe|face pack|essential oil|oil|diffuser|freshener|freshner|candle|edit|gel|solid perfume)/i;
+const HEADING = /^(bill\s*to|billing|payment|order\b|items?\b|quantity|product|sku|subtotal|total|thank|notes?\b|shipping method|delivery)/i;
+const isProperty = (line: string) => line.match(/^([A-Za-z][A-Za-z0-9 ._#-]{0,30}?)\s*[:：]\s*(.+)$/);
 
-/** Extract visual text lines (top-to-bottom, left-to-right) from every page. */
+/** Extract visual text lines (top-to-bottom, left-to-right) from the PDF's text layer. */
 async function extractLines(buf: ArrayBuffer): Promise<string[]> {
   const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
   const lines: string[] = [];
@@ -34,8 +39,7 @@ async function extractLines(buf: ArrayBuffer): Promise<string[]> {
       rows.get(key)!.push({ x: it.transform[4], s });
     }
     for (const y of [...rows.keys()].sort((a, b) => b - a)) {
-      const row = rows.get(y)!.sort((a, b) => a.x - b.x);
-      const line = row.map((r) => r.s).join(" ").replace(/\s{2,}/g, " ").trim();
+      const line = rows.get(y)!.sort((a, b) => a.x - b.x).map((r) => r.s).join(" ").replace(/\s{2,}/g, " ").trim();
       if (line) lines.push(line);
     }
     await page.cleanup();
@@ -43,21 +47,47 @@ async function extractLines(buf: ArrayBuffer): Promise<string[]> {
   return lines;
 }
 
-const HEADING = /^(bill\s*to|billing|payment|order\b|items?\b|quantity|product|sku|subtotal|total|thank|notes?\b|shipping method|delivery)/i;
-
-function isProperty(line: string): RegExpMatchArray | null {
-  return line.match(/^([A-Za-z][A-Za-z0-9 ._#-]{0,30}?)\s*[:：]\s*(.+)$/);
+/** OCR fallback for PDFs with no text layer (outlined text / scanned images). */
+async function ocrLines(buf: ArrayBuffer, onProgress?: ProgressFn): Promise<string[]> {
+  const { recognize } = await import("tesseract.js");
+  const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+  const lines: string[] = [];
+  for (let p = 1; p <= doc.numPages; p++) {
+    const page = await doc.getPage(p);
+    const viewport = page.getViewport({ scale: 2 });
+    const canvas = document.createElement("canvas");
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    const { data } = await recognize(canvas, "eng", {
+      logger: (m: { status?: string; progress?: number }) => {
+        if (onProgress && m.status === "recognizing text") {
+          onProgress(Math.round(((p - 1 + (m.progress || 0)) / doc.numPages) * 100), `Scanning page ${p}…`);
+        }
+      },
+    });
+    (data.text || "").split("\n").forEach((l) => {
+      const t = l.replace(/\s+/g, " ").trim();
+      if (t) lines.push(t);
+    });
+    canvas.width = 0;
+    canvas.height = 0;
+    await page.cleanup();
+  }
+  return lines;
 }
 
-export async function parseSlip(file: File): Promise<ParseResult> {
-  const buf = await file.arrayBuffer();
-  const lines = await extractLines(buf);
-  const raw = lines.join("\n");
+/** Heuristic field extraction — works on both text-layer lines and OCR lines. */
+function extractFields(lines: string[]): { data: SlipData; detected: string[] } {
   const data = emptySlip();
   const detected: string[] = [];
   const mark = (f: string) => { if (!detected.includes(f)) detected.push(f); };
+  const raw = lines.join("\n");
 
-  // ---- order number ----
+  // order number
   for (const l of lines) {
     let m = l.match(/order\s*(?:name|no\.?|number|#)?\s*[:#]?\s*([A-Za-z0-9][A-Za-z0-9/#_-]{2,})/i);
     if (m && !/online store|confirmation/i.test(l)) { data.orderNumber = m[1].replace(/^#/, ""); mark("orderNumber"); break; }
@@ -65,7 +95,7 @@ export async function parseSlip(file: File): Promise<ParseResult> {
     if (m) { data.orderNumber = m[1].replace(/[#\s]/g, ""); mark("orderNumber"); break; }
   }
 
-  // ---- date ----
+  // date
   const dateLine = lines.find((l) =>
     /\b(\d{1,2}\s+)?(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}?,?\s*\d{4}\b/i.test(l) ||
     /\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b/.test(l)
@@ -75,11 +105,10 @@ export async function parseSlip(file: File): Promise<ParseResult> {
     if (m) { data.orderDate = m[1]; mark("orderDate"); }
   }
 
-  // ---- global email ----
   const emailM = raw.match(EMAIL_RE);
   if (emailM) { data.email = emailM[0]; mark("email"); }
 
-  // ---- ship-to block ----
+  // ship-to block
   const shipIdx = lines.findIndex((l) => /^(ship\s*to|shipping address|deliver(?:y| to)|ship-to|customer)\b/i.test(l));
   if (shipIdx > -1) {
     const block: string[] = [];
@@ -113,7 +142,7 @@ export async function parseSlip(file: File): Promise<ParseResult> {
     if (ph) { data.phone = ph[0].trim(); mark("phone"); }
   }
 
-  // ---- gift-box properties (Box size / Item N / scent…) + gift message ----
+  // gift-box properties + gift message
   const details: string[] = [];
   let firstPropIdx = -1;
   for (let i = 0; i < lines.length; i++) {
@@ -140,47 +169,28 @@ export async function parseSlip(file: File): Promise<ParseResult> {
   }
 
   const looksLikeTitle = (s: string) =>
-    !!s &&
-    s.trim().length >= 2 &&
-    s.length < 80 &&
-    !isProperty(s) &&
-    !HEADING.test(s) &&
-    /[A-Za-z]/.test(s) &&
-    !/₹|\brs\.?\b|\binr\b|\$|@|https?:|www\.|\bindia\b|\b\d{5,}\b/i.test(s);
+    !!s && s.trim().length >= 2 && s.length < 80 && !isProperty(s) && !HEADING.test(s) &&
+    /[A-Za-z]/.test(s) && !/₹|\brs\.?\b|\binr\b|\$|@|https?:|www\.|\bindia\b|\b\d{5,}\b/i.test(s);
   const cleanTitle = (s: string) =>
-    s
-      .replace(/\s*[x×]\s*\d{1,3}\s*$/i, "")
-      .replace(/^\s*\d{1,3}\s*[x×]\s*/i, "")
-      .replace(/^\s*\d{1,3}\s+(?=[A-Za-z])/, "")
-      .replace(/\s+(SKU\b|₹|Rs\.?\s*\d).*/i, "")
-      .trim();
+    s.replace(/\s*[x×]\s*\d{1,3}\s*$/i, "").replace(/^\s*\d{1,3}\s*[x×]\s*/i, "").replace(/^\s*\d{1,3}\s+(?=[A-Za-z])/, "").replace(/\s+(SKU\b|₹|Rs\.?\s*\d).*/i, "").trim();
 
   const items: SlipItem[] = [];
-
-  // 1) Gift-box style — the product name sits just above its first property.
   if (firstPropIdx > 0) {
     for (let k = firstPropIdx - 1; k >= 0 && firstPropIdx - k <= 4; k--) {
-      if (looksLikeTitle(lines[k])) {
-        items.push({ title: cleanTitle(lines[k]), variant: "", qty: "1", price: "", details });
-        break;
-      }
+      if (looksLikeTitle(lines[k])) { items.push({ title: cleanTitle(lines[k]), variant: "", qty: "1", price: "", details }); break; }
     }
     if (items.length === 0) items.push({ title: "Gift Box", variant: "", qty: "1", price: "", details });
   }
-
-  // 2) Regular products — quantity rows in several common layouts.
   if (items.length === 0) {
     for (const l of lines) {
       let qty = "", title = "", m: RegExpMatchArray | null;
-      if ((m = l.match(/^(\d{1,3})\s*[x×]\s*(.+)$/))) { qty = m[1]; title = m[2]; }            // "2 × Body Butter"
-      else if ((m = l.match(/^(.+?)\s*[x×]\s*(\d{1,3})\b/))) { qty = m[2]; title = m[1]; }       // "Body Butter × 2"
-      else if ((m = l.match(/^(\d{1,3})\s+(\D.+)$/)) && PRODUCTY.test(m[2])) { qty = m[1]; title = m[2]; } // "2 Body Butter" (table columns)
+      if ((m = l.match(/^(\d{1,3})\s*[x×]\s*(.+)$/))) { qty = m[1]; title = m[2]; }
+      else if ((m = l.match(/^(.+?)\s*[x×]\s*(\d{1,3})\b/))) { qty = m[2]; title = m[1]; }
+      else if ((m = l.match(/^(\d{1,3})\s+(\D.+)$/)) && PRODUCTY.test(m[2])) { qty = m[1]; title = m[2]; }
       const t = title ? cleanTitle(title) : "";
       if (t && looksLikeTitle(t)) items.push({ title: t, variant: "", qty: String(parseInt(qty, 10) || 1), price: "", details: [] });
     }
   }
-
-  // 3) Last resort — any recognisable product line.
   if (items.length === 0) {
     const pl = lines.find((l) => PRODUCTY.test(l) && looksLikeTitle(l));
     if (pl) items.push({ title: cleanTitle(pl), variant: "", qty: "1", price: "", details: [] });
@@ -188,6 +198,23 @@ export async function parseSlip(file: File): Promise<ParseResult> {
 
   data.items = items;
   if (items.length) mark("items");
+  return { data, detected };
+}
 
-  return { data, rawText: raw, detected };
+export async function parseSlip(file: File, onProgress?: ProgressFn): Promise<ParseResult> {
+  // pdf.js transfers (detaches) the ArrayBuffer to its worker, so each pass reads a
+  // fresh copy from the File rather than sharing one buffer.
+  let lines = await extractLines(await file.arrayBuffer());
+  let usedOcr = false;
+
+  // No usable text layer (outlined text / scanned image) → OCR fallback.
+  const chars = lines.join("").replace(/\s/g, "").length;
+  if (chars < 40) {
+    usedOcr = true;
+    onProgress?.(0, "No text found — scanning with OCR…");
+    lines = await ocrLines(await file.arrayBuffer(), onProgress);
+  }
+
+  const { data, detected } = extractFields(lines);
+  return { data, rawText: lines.join("\n"), detected, usedOcr };
 }

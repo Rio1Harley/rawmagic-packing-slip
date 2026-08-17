@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { SlipData, SlipItem, emptyItem } from "@/lib/types";
 import { CATALOG, findProduct } from "@/lib/catalog";
+import Dropdown from "@/components/Dropdown";
 
 const inputCls = "w-full rounded-lg border border-sand bg-white px-3 py-2 text-sm text-ink outline-none focus:border-green";
 
@@ -24,54 +26,48 @@ function ItemEditor({
   onRemove: () => void;
 }) {
   const product = findProduct(item.title);
-  const showVariantSelect = !!product && product.variants.length > 1 && !/^(title|default title)$/i.test(product.optName || "title");
-  const productValue = product ? item.title : item.title ? "__custom" : "";
+  const [manual, setManual] = useState(!!item.title && !product);
+  const isMulti = (opt?: string, len = 0) => len > 1 && !/^(title|default title)$/i.test(opt || "title");
+  const showVariantSelect = !!product && isMulti(product.optName, product.variants.length);
+  const productValue = product ? item.title : manual ? "__custom" : "";
 
-  function onProduct(e: React.ChangeEvent<HTMLSelectElement>) {
-    const name = e.target.value;
-    if (name === "__custom") return onChange({ title: "", variant: "", price: "" });
+  function onProduct(name: string) {
+    if (name === "__custom") {
+      setManual(true);
+      onChange({ title: "", variant: "", price: "" });
+      return;
+    }
+    setManual(false);
     if (name === "") return onChange({ title: "", variant: "", price: "" });
     const p = findProduct(name);
     const first = p?.variants[0];
-    const multi = !!p && p.variants.length > 1 && !/^(title|default title)$/i.test(p.optName || "title");
-    onChange({ title: name, variant: multi && first ? first.v : "", price: first?.price || "" });
+    onChange({ title: name, variant: p && isMulti(p.optName, p.variants.length) && first ? first.v : "", price: first?.price || "" });
   }
-  function onVariant(e: React.ChangeEvent<HTMLSelectElement>) {
-    const v = e.target.value;
+  function onVariant(v: string) {
     const pv = product?.variants.find((x) => x.v === v);
     onChange({ variant: v, price: pv?.price ?? item.price });
   }
 
+  const productOptions = [
+    { value: "", label: "Select a product…" },
+    ...CATALOG.map((p) => ({ value: p.name, label: p.name })),
+    { value: "__custom", label: "Custom / other…" },
+  ];
+
   return (
     <div className="space-y-2 rounded-xl border border-sand bg-white/70 p-3">
       <div className="flex gap-2">
-        <select value={productValue} onChange={onProduct} className={`${inputCls} flex-1`}>
-          <option value="">Select a product…</option>
-          {CATALOG.map((p) => (
-            <option key={p.name} value={p.name}>
-              {p.name}
-            </option>
-          ))}
-          <option value="__custom">Custom / other…</option>
-        </select>
+        <Dropdown value={productValue} onChange={onProduct} options={productOptions} placeholder="Select a product…" className="flex-1" />
         <button onClick={onRemove} aria-label="Remove item" className="rounded-lg px-2 text-lg text-ink/40 hover:text-terracotta">
           ✕
         </button>
       </div>
 
-      {productValue === "__custom" && (
-        <input className={inputCls} value={item.title} onChange={(e) => onChange({ title: e.target.value })} placeholder="Product name" />
-      )}
+      {manual && <input className={inputCls} value={item.title} onChange={(e) => onChange({ title: e.target.value })} placeholder="Product name" />}
 
       <div className="flex gap-2">
         {showVariantSelect ? (
-          <select value={item.variant} onChange={onVariant} className={`${inputCls} flex-1`}>
-            {product!.variants.map((v) => (
-              <option key={v.v} value={v.v}>
-                {v.v}
-              </option>
-            ))}
-          </select>
+          <Dropdown value={item.variant} onChange={onVariant} options={product!.variants.map((v) => ({ value: v.v, label: v.v }))} placeholder="Variant" className="flex-1" />
         ) : (
           <input className={`${inputCls} flex-1`} value={item.variant} onChange={(e) => onChange({ variant: e.target.value })} placeholder="Variant (optional)" />
         )}

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { LabelSize, SIZES, IN_TO_MM } from "@/lib/sizes";
+import Dropdown from "@/components/Dropdown";
 
 export default function SizePicker({ value, onChange }: { value: LabelSize; onChange: (s: LabelSize) => void }) {
   const [cw, setCw] = useState("4");
@@ -24,8 +25,7 @@ export default function SizePicker({ value, onChange }: { value: LabelSize; onCh
     });
   }
 
-  function onSelect(e: React.ChangeEvent<HTMLSelectElement>) {
-    const id = e.target.value;
+  function onSelect(id: string) {
     if (id === "custom") {
       applyCustom();
       return;
@@ -36,25 +36,11 @@ export default function SizePicker({ value, onChange }: { value: LabelSize; onCh
 
   return (
     <div>
-      <div className="relative">
-        <select
-          value={value.id}
-          onChange={onSelect}
-          className="w-full appearance-none rounded-xl border border-sand bg-white px-4 py-3 pr-10 font-heading text-base text-ink outline-none focus:border-green"
-        >
-          {SIZES.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label} — {s.wmm}×{s.hmm} mm
-            </option>
-          ))}
-          <option value="custom">Custom size…</option>
-        </select>
-        <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-ink/45">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </span>
-      </div>
+      <Dropdown
+        value={value.id}
+        onChange={onSelect}
+        options={[...SIZES.map((s) => ({ value: s.id, label: `${s.label} — ${s.wmm}×${s.hmm} mm` })), { value: "custom", label: "Custom size…" }]}
+      />
 
       {isCustom && (
         <div className="mt-3 flex flex-wrap items-end gap-2 rounded-xl border border-sand bg-white p-3">
