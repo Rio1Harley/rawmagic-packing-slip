@@ -161,10 +161,10 @@ export default function SlipPreview({ data, size }: { data: SlipData; size: Labe
                 {/* Items table */}
                 <div style={{ marginTop: "0.8em", flex: "1 1 auto", minHeight: 0, overflow: "hidden" }}>
                   <div style={{ display: "flex", gap: "0.5em", alignItems: "flex-end", paddingBottom: "0.35em", borderBottom: `1.5px solid ${GREEN_DARK}` }}>
-                    <div style={{ flex: "1 1 auto", minWidth: 0 }}><span style={th}>Item</span></div>
-                    <div style={{ width: "2em", textAlign: "center" }}><span style={th}>Qty</span></div>
-                    <div style={{ width: "4.4em", textAlign: "right" }}><span style={th}>Price</span></div>
-                    <div style={{ width: "4.8em", textAlign: "right" }}><span style={th}>Total</span></div>
+                    <div style={{ flex: "1 1 0", minWidth: 0 }}><span style={th}>Item</span></div>
+                    <div style={{ flex: "0 0 2em", textAlign: "center" }}><span style={th}>Qty</span></div>
+                    <div style={{ flex: "0 0 4.4em", textAlign: "right" }}><span style={th}>Price</span></div>
+                    <div style={{ flex: "0 0 4.8em", textAlign: "right" }}><span style={th}>Total</span></div>
                   </div>
 
                   {data.items.length === 0 ? (
@@ -174,7 +174,7 @@ export default function SlipPreview({ data, size }: { data: SlipData; size: Labe
                       const { boxSize, includes } = splitItemDetails(it.details);
                       return (
                         <div key={i} style={{ display: "flex", gap: "0.5em", alignItems: "flex-start", padding: "0.42em 0", borderBottom: `1px solid ${SAND}` }}>
-                          <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+                          <div style={{ flex: "1 1 0", minWidth: 0 }}>
                             <div style={{ fontFamily: SERIF, fontSize: "0.96em", color: TERRA, lineHeight: 1.15 }}>{it.title || "Item"}</div>
                             {it.variant && <div style={{ fontSize: "0.72em", color: "#5a5a52", marginTop: "0.08em" }}>{it.variant}</div>}
                             {boxSize && (
@@ -187,9 +187,9 @@ export default function SlipPreview({ data, size }: { data: SlipData; size: Labe
                               </div>
                             )}
                           </div>
-                          <div style={{ width: "2em", textAlign: "center" }}><span style={{ fontSize: "0.82em", fontWeight: 700 }}>{it.qty || "1"}</span></div>
-                          <div style={{ width: "4.4em", textAlign: "right" }}><span style={{ fontSize: "0.74em", whiteSpace: "nowrap" }}>{fmtPrice(it.price)}</span></div>
-                          <div style={{ width: "4.8em", textAlign: "right" }}><span style={{ fontSize: "0.78em", fontWeight: 700, whiteSpace: "nowrap" }}>{lineTotal(it.qty, it.price)}</span></div>
+                          <div style={{ flex: "0 0 2em", textAlign: "center" }}><span style={{ fontSize: "0.82em", fontWeight: 700 }}>{it.qty || "1"}</span></div>
+                          <div style={{ flex: "0 0 4.4em", textAlign: "right" }}><span style={{ fontSize: "0.74em", whiteSpace: "nowrap" }}>{fmtPrice(it.price)}</span></div>
+                          <div style={{ flex: "0 0 4.8em", textAlign: "right" }}><span style={{ fontSize: "0.78em", fontWeight: 700, whiteSpace: "nowrap" }}>{lineTotal(it.qty, it.price)}</span></div>
                         </div>
                       );
                     })
