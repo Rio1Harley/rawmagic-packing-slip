@@ -27,13 +27,12 @@ function splitItemDetails(details: string[]) {
   let boxSize = "";
   const includes: string[] = [];
   for (const d of details) {
-    const m = d.match(/^([^:]+):\s*(.+)$/);
-    if (m) {
-      const k = m[1].trim().toLowerCase();
-      const v = m[2].trim();
-      if (k.startsWith("box size") || k === "size") boxSize = v;
-      else if (/^item\s*\d+/.test(k)) includes.push(v);
-    }
+    const s = d.trim();
+    if (!s) continue;
+    const bs = s.match(/^(?:box\s*)?size\s*[:：]\s*(.+)$/i);
+    if (bs) { boxSize = bs[1].trim(); continue; }
+    // Each remaining line is one included product; drop any legacy "Item N:" prefix.
+    includes.push(s.replace(/^item\s*\d+\s*[:：]\s*/i, "").trim());
   }
   return { boxSize, includes };
 }

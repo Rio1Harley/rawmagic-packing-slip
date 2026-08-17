@@ -30,3 +30,16 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# Local test fixtures & sample slips (contain real order PII — never commit)
+/scripts/fixtures/
+/scripts/test-parse.mjs
+/public/_test*.pdf
+
+# Local OCR/analysis dev tooling (not needed for the app)
+/eng.traineddata
+/.claude/
+/scripts/dump-lines.mjs
+/scripts/render-ocr.mjs
+/scripts/bbox-columns.mjs
+/scripts/gen-fixtures.mjs
