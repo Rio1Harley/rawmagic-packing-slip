@@ -15,6 +15,17 @@ const SAND = "#E7E3D7";
 const MUTE = "#6B6B60";
 const SERIF = '"Old Standard TT", Georgia, serif';
 
+// Sender / return address — printed on the slip beside "Ship To".
+const SHIP_FROM = {
+  name: "Raw Magic",
+  lines: [
+    "5th Floor, Maitri Siya Enclave, 502,",
+    "opp. Dayanand Saraswati School,",
+    "Mamledarwadi, Malad West,",
+    "Mumbai, Maharashtra 400064",
+  ],
+};
+
 const toNum = (s: string) => {
   const n = parseFloat(String(s || "").replace(/[^0-9.]/g, ""));
   return isNaN(n) ? 0 : n;
@@ -61,6 +72,10 @@ export default function SlipPreview({ data, size }: { data: SlipData; size: Labe
 
   const addressLines = useMemo(() => data.shipToAddress.split("\n").filter((l) => l.trim()), [data.shipToAddress]);
   const grand = useMemo(() => data.items.reduce((s, it) => s + toNum(it.qty) * toNum(it.price), 0), [data.items]);
+
+  // Column header style. Widths live on the (base-sized) cell divs so header and rows
+  // align; text sizing goes on inner spans so it can't shrink the column.
+  const th = { fontSize: "0.52em", letterSpacing: "0.08em", color: MUTE, textTransform: "uppercase", fontWeight: 800 } as const;
 
   async function handleExport() {
     if (!slipRef.current) return;
@@ -124,23 +139,32 @@ export default function SlipPreview({ data, size }: { data: SlipData; size: Labe
                   </span>
                 </div>
 
-                {/* Ship to */}
-                <div style={{ marginTop: "0.7em", padding: "0.7em 0.85em", backgroundColor: CREAM, border: `1px solid ${SAND}`, borderRadius: "0.5em" }}>
-                  <div style={{ fontSize: "0.56em", letterSpacing: "0.2em", color: GREEN, textTransform: "uppercase", fontWeight: 800 }}>Ship To</div>
-                  <div style={{ fontFamily: SERIF, fontSize: "1.12em", color: INK, marginTop: "0.1em" }}>{data.shipToName || "—"}</div>
-                  {addressLines.map((l, i) => (
-                    <div key={i} style={{ fontSize: "0.78em", lineHeight: 1.4, color: "#3a3a34" }}>{l}</div>
-                  ))}
-                  {data.phone && <div style={{ fontSize: "0.78em", color: INK, marginTop: "0.2em", fontWeight: 600 }}>Phone: {data.phone}</div>}
+                {/* Ship to (left) + Ship from (right) */}
+                <div style={{ display: "flex", gap: "0.55em", marginTop: "0.7em", alignItems: "stretch" }}>
+                  <div style={{ flex: "1 1 0", minWidth: 0, padding: "0.6em 0.75em", backgroundColor: CREAM, border: `1px solid ${SAND}`, borderRadius: "0.5em" }}>
+                    <div style={{ fontSize: "0.54em", letterSpacing: "0.18em", color: GREEN, textTransform: "uppercase", fontWeight: 800 }}>Ship To</div>
+                    <div style={{ fontFamily: SERIF, fontSize: "1.02em", color: INK, marginTop: "0.12em", lineHeight: 1.15 }}>{data.shipToName || "—"}</div>
+                    {addressLines.map((l, i) => (
+                      <div key={i} style={{ fontSize: "0.72em", lineHeight: 1.35, color: "#3a3a34" }}>{l}</div>
+                    ))}
+                    {data.phone && <div style={{ fontSize: "0.72em", color: INK, marginTop: "0.2em", fontWeight: 600 }}>Phone: {data.phone}</div>}
+                  </div>
+                  <div style={{ flex: "1 1 0", minWidth: 0, padding: "0.6em 0.75em", backgroundColor: "#fff", border: `1px solid ${SAND}`, borderRadius: "0.5em" }}>
+                    <div style={{ fontSize: "0.54em", letterSpacing: "0.18em", color: TERRA, textTransform: "uppercase", fontWeight: 800 }}>Ship From</div>
+                    <div style={{ fontFamily: SERIF, fontSize: "1.02em", color: INK, marginTop: "0.12em", lineHeight: 1.15 }}>{SHIP_FROM.name}</div>
+                    {SHIP_FROM.lines.map((l, i) => (
+                      <div key={i} style={{ fontSize: "0.72em", lineHeight: 1.35, color: "#3a3a34" }}>{l}</div>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Items table */}
                 <div style={{ marginTop: "0.8em", flex: "1 1 auto", minHeight: 0, overflow: "hidden" }}>
-                  <div style={{ display: "flex", fontSize: "0.54em", letterSpacing: "0.1em", color: MUTE, textTransform: "uppercase", fontWeight: 800, paddingBottom: "0.35em", borderBottom: `1.5px solid ${GREEN_DARK}` }}>
-                    <div style={{ flex: "1 1 auto" }}>Item</div>
-                    <div style={{ width: "2em", textAlign: "center" }}>Qty</div>
-                    <div style={{ width: "3.6em", textAlign: "right" }}>Price</div>
-                    <div style={{ width: "3.8em", textAlign: "right" }}>Total</div>
+                  <div style={{ display: "flex", gap: "0.5em", alignItems: "flex-end", paddingBottom: "0.35em", borderBottom: `1.5px solid ${GREEN_DARK}` }}>
+                    <div style={{ flex: "1 1 auto", minWidth: 0 }}><span style={th}>Item</span></div>
+                    <div style={{ width: "2em", textAlign: "center" }}><span style={th}>Qty</span></div>
+                    <div style={{ width: "4.4em", textAlign: "right" }}><span style={th}>Price</span></div>
+                    <div style={{ width: "4.8em", textAlign: "right" }}><span style={th}>Total</span></div>
                   </div>
 
                   {data.items.length === 0 ? (
@@ -149,8 +173,8 @@ export default function SlipPreview({ data, size }: { data: SlipData; size: Labe
                     data.items.map((it, i) => {
                       const { boxSize, includes } = splitItemDetails(it.details);
                       return (
-                        <div key={i} style={{ display: "flex", alignItems: "flex-start", padding: "0.42em 0", borderBottom: `1px solid ${SAND}` }}>
-                          <div style={{ flex: "1 1 auto", paddingRight: "0.4em", minWidth: 0 }}>
+                        <div key={i} style={{ display: "flex", gap: "0.5em", alignItems: "flex-start", padding: "0.42em 0", borderBottom: `1px solid ${SAND}` }}>
+                          <div style={{ flex: "1 1 auto", minWidth: 0 }}>
                             <div style={{ fontFamily: SERIF, fontSize: "0.96em", color: TERRA, lineHeight: 1.15 }}>{it.title || "Item"}</div>
                             {it.variant && <div style={{ fontSize: "0.72em", color: "#5a5a52", marginTop: "0.08em" }}>{it.variant}</div>}
                             {boxSize && (
@@ -163,9 +187,9 @@ export default function SlipPreview({ data, size }: { data: SlipData; size: Labe
                               </div>
                             )}
                           </div>
-                          <div style={{ width: "2em", textAlign: "center", fontSize: "0.82em", fontWeight: 700 }}>{it.qty || "1"}</div>
-                          <div style={{ width: "3.6em", textAlign: "right", fontSize: "0.78em" }}>{fmtPrice(it.price)}</div>
-                          <div style={{ width: "3.8em", textAlign: "right", fontSize: "0.82em", fontWeight: 700 }}>{lineTotal(it.qty, it.price)}</div>
+                          <div style={{ width: "2em", textAlign: "center" }}><span style={{ fontSize: "0.82em", fontWeight: 700 }}>{it.qty || "1"}</span></div>
+                          <div style={{ width: "4.4em", textAlign: "right" }}><span style={{ fontSize: "0.74em", whiteSpace: "nowrap" }}>{fmtPrice(it.price)}</span></div>
+                          <div style={{ width: "4.8em", textAlign: "right" }}><span style={{ fontSize: "0.78em", fontWeight: 700, whiteSpace: "nowrap" }}>{lineTotal(it.qty, it.price)}</span></div>
                         </div>
                       );
                     })

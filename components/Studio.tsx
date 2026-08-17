@@ -57,12 +57,8 @@ export default function Studio() {
       <header className="border-b border-sand bg-cream/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5">
           <div className="flex items-center gap-2.5">
-            <span className="grid h-9 w-9 place-items-center rounded-full border border-green-dark">
-              <svg width="20" height="20" viewBox="0 0 32 32" fill="none">
-                <path d="M16 6c-4.6 5-4.6 13 0 20 4.6-7 4.6-15 0-20z" fill="#5FA06B" />
-                <path d="M16 9v14" stroke="#FBFBE3" strokeWidth="1" strokeLinecap="round" />
-              </svg>
-            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/rawmagic-mark.png" alt="Raw Magic" className="h-10 w-10" />
             <div className="leading-tight">
               <p className="font-heading text-lg tracking-wide text-green-dark">Raw Magic</p>
               <p className="text-[11px] uppercase tracking-[0.18em] text-terracotta">Packing Slip Studio</p>
