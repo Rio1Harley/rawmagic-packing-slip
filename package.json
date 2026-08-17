@@ -5,13 +5,15 @@
   "description": "Raw Magic — turn a Shopify packing slip into a brand-styled label at any courier size, entirely in the browser.",
   "scripts": {
     "copy-worker": "node ./scripts/copy-pdf-worker.mjs",
-    "predev": "npm run copy-worker",
+    "predev": "npm run copy-assets",
     "dev": "next dev",
-    "prebuild": "npm run copy-worker",
+    "prebuild": "npm run copy-assets",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "npm run copy-worker"
+    "postinstall": "npm run copy-assets",
+    "copy-ocr": "node ./scripts/copy-ocr-assets.mjs",
+    "copy-assets": "npm run copy-worker && npm run copy-ocr"
   },
   "dependencies": {
     "html2canvas": "1.4.1",

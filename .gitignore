@@ -43,3 +43,6 @@ yarn-error.log*
 /scripts/render-ocr.mjs
 /scripts/bbox-columns.mjs
 /scripts/gen-fixtures.mjs
+
+# Build-copied Tesseract OCR worker + core (regenerated from node_modules)
+/public/tesseract/

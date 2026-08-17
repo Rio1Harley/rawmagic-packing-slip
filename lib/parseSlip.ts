@@ -52,7 +52,15 @@ async function extractLines(bytes: Uint8Array): Promise<string[]> {
 async function ocrColumns(bytes: Uint8Array, onProgress?: ProgressFn): Promise<{ left: string[]; right: string[]; raw: string }> {
   const { createWorker } = await import("tesseract.js");
   const doc = await pdfjsLib.getDocument({ data: bytes }).promise;
+  // Self-hosted OCR assets (worker + WASM core + language data) served from /public,
+  // so there's no third-party CDN call and no first-scan download wait. Paths must be
+  // absolute — Tesseract loads its worker as a blob:, and relative URLs can't resolve there.
+  const origin = window.location.origin;
   const worker = await createWorker("eng", 1, {
+    workerPath: `${origin}/tesseract/worker.min.js`,
+    corePath: `${origin}/tesseract`,
+    langPath: `${origin}/tessdata`,
+    gzip: true,
     logger: (m: { status?: string; progress?: number }) => {
       if (onProgress && m.status === "recognizing text") onProgress(Math.round((m.progress || 0) * 100), "Reading the slip…");
     },
